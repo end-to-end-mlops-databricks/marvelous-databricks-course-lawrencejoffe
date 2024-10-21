@@ -133,7 +133,7 @@ def build_model(preprocessor, n_estimators=100, max_depth=2, random_state=42):
 
     model = Pipeline(steps=[
         ('preprocessor', preprocessor),
-        ('regressor', clf)
+        ('classifier', clf)
     ])
 
     return model
@@ -197,7 +197,7 @@ plot_actual_vs_predicted(y_test, y_pred)
 
 def plot_feature_importance(model, top_n=10, title="Top Feature Importance", figsize=(10, 6)):
     # Extract feature importance and feature names
-    feature_importance = model.named_steps['regressor'].feature_importances_
+    feature_importance = model.named_steps['classifier'].feature_importances_
     feature_names = model.named_steps['preprocessor'].get_feature_names_out()
 
     # Plot feature importance
