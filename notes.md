@@ -1,6 +1,6 @@
 ## Step2
 
-18 October 2024  
+18 October 2024
 
 ### Install databricks cli
 ```
@@ -40,5 +40,3 @@ uv build
 databricks auth login --host https://adb-1713302240061567.7.azuredatabricks.net
 
 databricks fs cp dist/mlops_with_databricks-0.0.1-py3-none-any.whl  dbfs:/Volumes/heiaepgah71pwedmld01001/lj_test/mlops_data/ --profile primeai
-
-

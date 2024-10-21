@@ -1,14 +1,13 @@
 import logging
+
 from loan_prediction.config_loader import ConfigLoader
 from loan_prediction.data_loader import DataLoader
 from loan_prediction.data_processor import DataProcessor
 from loan_prediction.loan_classifier_model import LoanClassifierModel
-from loan_prediction.utils import visualize_results, plot_feature_importance
+from loan_prediction.utils import plot_feature_importance, visualize_results
 
-
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
 
 
 # Load configuration
@@ -18,13 +17,12 @@ logger.debug(configurator.config_str())
 logger.info("Configuration loaded")
 
 
-#Load data
-filepath = './data/sample/sample.csv'
-filepath = './data/raw/train.csv'
+# Load data
+filepath = "./data/sample/sample.csv"
+filepath = "./data/raw/train.csv"
 dataloader = DataLoader(filepath)
 dataloader.load()
 logger.info("Data Loaded")
-
 
 
 # Initialize DataProcessor
@@ -41,16 +39,13 @@ logger.info("DataProcessor built.")
 
 # Split the data
 X_train, X_test, y_train, y_test = data_processor.split_data()
-logger.info(f"Data split into training and test sets.")
+logger.info("Data split into training and test sets.")
 logger.debug(f"Training set shape: {X_train.shape}, Test set shape: {X_test.shape}")
 
 # Initialize and train the model
 model = LoanClassifierModel(data_processor.preprocessor, configurator.config)
 model.train(X_train, y_train)
 logger.info("Model training completed.")
-
-
-
 
 
 # Evaluate the model
