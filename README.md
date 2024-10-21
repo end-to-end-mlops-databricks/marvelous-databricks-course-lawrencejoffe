@@ -24,3 +24,18 @@ source venv/bin/activate
 uv pip install -r pyproject.toml --all-extras
 uv lock
 ```
+
+# Week 1 Deploy skeleton to Databricks
+
+## Dataset selection: Loan Approval Prediction
+
+This project will use the sample dataset from a Kaggle.  
+The dataset is for the season 4 episode 10 competition:  
+[Loan Approval Prediction](https://www.kaggle.com/competitions/playground-series-s4e10/data)  
+
+The data is downloaded into the data folder not commmitted into version control.  
+
+
+
+
+
