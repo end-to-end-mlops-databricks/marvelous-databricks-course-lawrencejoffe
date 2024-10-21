@@ -37,3 +37,6 @@ ignore = [
 
 [tool.ruff.format]
 indent-style = "space"
+
+[tool.setuptools]
+packages = ["loan_prediction"]
