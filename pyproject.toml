@@ -17,6 +17,7 @@ dependencies = [
     "matplotlib>=3.9.2, <4",
     "databricks-feature-engineering>=0.6, <1",
     "pre-commit>=4.0.1",
+    "pydantic>=2.9.2",
 ]
 
 [project.optional-dependencies]
