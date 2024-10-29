@@ -1,25 +1,62 @@
 # Databricks notebook source
-from house_price.data_processor import DataProcessor
-from house_price.config import ProjectConfig
+# !pip install /Volumes/heiaepgah71pwedmld01001/lj_test/mlops_data/mlops_with_databricks-0.0.1-py3-none-any.whl --force-reinstall
+
+# COMMAND ----------
+
+dbutils.library.restartPython()
+
+# COMMAND ----------
+
+from loan_prediction.data_processor import DataProcessor
+from loan_prediction.config import ProjectConfig
+from loan_prediction.data_loader import DataLoader
 from datetime import datetime
 import pandas as pd
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder.getOrCreate()
 
-# COMMAND ----------
-
-config = ProjectConfig.from_yaml(config_path="../../project_config.yml")
-
-# COMMAND ----------
-# Load the house prices dataset
-df = spark.read.csv(
-    "/Volumes/mlops_dev/house_prices/data/data.csv",
-    header=True,
-    inferSchema=True).toPandas()
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # COMMAND ----------
-data_processor = DataProcessor(pandas_df=df, config=config)
+
+config = ProjectConfig.from_yaml(config_path="../../config/config.yml")
+
+# COMMAND ----------
+
+#Load data
+filepath = '/Volumes/heiaepgah71pwedmld01001/lj_test/mlops_data/train.csv'
+dataloader = DataLoader(filepath)
+dataloader.load()
+logger.info(f"Data Loaded: {len(dataloader.data)}")
+
+
+
+# COMMAND ----------
+
+# Initialize DataProcessor
+data_processor = DataProcessor(dataloader, config)
+data_processor.load_data()
+logger.info("DataProcessor initialized.")
+
+
 data_processor.preprocess()
-train_set, test_set = data_processor.split_data()
+logger.info("DataProcessor processed.")
+
+train_set, test_set = data_processor.split_train_test()
+
+
+
+# COMMAND ----------
+
+
 data_processor.save_to_catalog(train_set=train_set, test_set=test_set, spark=spark)
+logger.info("Saved to catalog")
+
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select count(*) from heiaepgah71pwedmld01001.lj_loan_prediction.train_set

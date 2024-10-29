@@ -51,7 +51,7 @@ logger.info("Data Loaded")
 
 # Initialize DataProcessor
 data_processor = DataProcessor(dataloader, configurator.config)
-data_processor.load_data(filepath)
+data_processor.load_data()
 logger.info("DataProcessor initialized.")
 
 logger.info(f"data_processor data size: {data_processor.df.size}")
