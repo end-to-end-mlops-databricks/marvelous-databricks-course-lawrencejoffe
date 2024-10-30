@@ -18,24 +18,28 @@ class DataProcessor:
     def __init__(self, dataloader: DataLoader, config):
         self.dataloader = dataloader
         self.config = config
-        self.X = None
-        self.y = None
+        # self.X = None
+        # self.y = None
         self.preprocessor = None
+        self._build_preprocessor()
         self.df = None
 
     def load_data(self):
         self.dataloader.load()
         # data sitting in self.dataloader.data
 
-    def process(self):
+    def xy_split(self, df):
         # Remove rows with missing target
         target = self.config.target
-        self.df = self.df.dropna(subset=[target])
+        df = df.dropna(subset=[target])
 
         # Separate features and target
-        self.X = self.df[self.config.num_features + self.config.cat_features]
-        self.y = self.df[target]
+        X = df[self.config.num_features + self.config.cat_features]
+        y = df[target]
 
+        return X, y
+
+    def _build_preprocessor(self):
         # Create preprocessing steps for numeric and categorical data
         numeric_transformer = Pipeline(
             steps=[("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]

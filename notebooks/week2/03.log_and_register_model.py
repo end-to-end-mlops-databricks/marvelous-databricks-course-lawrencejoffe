@@ -1,7 +1,7 @@
 # Databricks notebook source
 
 from pyspark.sql import SparkSession
-from house_price.config import ProjectConfig
+from loan_prediction.config import ProjectConfig
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline

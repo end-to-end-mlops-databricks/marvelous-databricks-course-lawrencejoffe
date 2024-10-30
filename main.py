@@ -3,6 +3,7 @@ import logging
 from loan_prediction.config import ProjectConfig
 from loan_prediction.data_loader import DataLoader
 from loan_prediction.data_processor import DataProcessor
+from loan_prediction.loan_classifier_model import LoanClassifierModel
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -50,12 +51,16 @@ train_set, test_set = data_processor.split_train_test()
 
 logger.info("Saved to catalog")
 
-exit()
 
-# # Initialize and train the model
-# model = LoanClassifierModel(data_processor.preprocessor, configurator.config)
-# model.train(X_train, y_train)
-# logger.info("Model training completed.")
+# Initialize and train the model
+model = LoanClassifierModel(data_processor.preprocessor, config)
+
+X_train, y_train = data_processor.xy_split(train_set)
+
+model.train(X_train, y_train)
+logger.info("Model training completed.")
+
+exit()
 
 
 # # Evaluate the model

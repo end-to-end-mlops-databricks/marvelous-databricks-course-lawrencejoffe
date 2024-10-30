@@ -11,8 +11,8 @@ class LoanClassifierModel:
                 (
                     "classifier",
                     RandomForestClassifier(
-                        n_estimators=config["parameters"]["n_estimators"],
-                        max_depth=config["parameters"]["max_depth"],
+                        n_estimators=config.parameters["n_estimators"],
+                        max_depth=config.parameters["max_depth"],
                         random_state=42,
                     ),
                 ),

@@ -1,5 +1,5 @@
 # Databricks notebook source
-# !pip install /Volumes/heiaepgah71pwedmld01001/lj_test/mlops_data/mlops_with_databricks-0.0.1-py3-none-any.whl --force-reinstall
+# !pip install /Volumes/heiaepgah71pwedmld01001/lj_loan_prediction/packages/mlops_with_databricks-0.0.1-py3-none-any.whl --force-reinstall
 
 # COMMAND ----------
 
@@ -17,8 +17,10 @@ from pyspark.sql import SparkSession
 spark = SparkSession.builder.getOrCreate()
 
 import logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+logger.setLevel(level=logging.INFO)
 
 # COMMAND ----------
 
@@ -27,7 +29,7 @@ config = ProjectConfig.from_yaml(config_path="../../config/config.yml")
 # COMMAND ----------
 
 #Load data
-filepath = '/Volumes/heiaepgah71pwedmld01001/lj_test/mlops_data/train.csv'
+filepath = '/Volumes/heiaepgah71pwedmld01001/lj_loan_prediction/data/train.csv'
 dataloader = DataLoader(filepath)
 dataloader.load()
 logger.info(f"Data Loaded: {len(dataloader.data)}")
