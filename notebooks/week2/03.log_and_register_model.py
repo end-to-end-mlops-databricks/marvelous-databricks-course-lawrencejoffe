@@ -1,5 +1,8 @@
 # Databricks notebook source
 
+!pip install /Volumes/heiaepgah71pwedmld01001/lj_loan_prediction/packages/mlops_with_databricks-0.0.1-py3-none-any.whl --force-reinstall
+
+# COMMAND ----------
 from pyspark.sql import SparkSession
 from loan_prediction.config import ProjectConfig
 from sklearn.preprocessing import OneHotEncoder
@@ -15,7 +18,7 @@ mlflow.set_registry_uri('databricks-uc') # It must be -uc for registering models
 
 # COMMAND ----------
 
-config = ProjectConfig.from_yaml(config_path="../../project_config.yml")
+config = ProjectConfig.from_yaml(config_path="../../config/config.yml")
 
 # Extract configuration details
 num_features = config.num_features
@@ -54,7 +57,7 @@ pipeline = Pipeline(steps=[
 
 
 # COMMAND ----------
-mlflow.set_experiment(experiment_name='/Shared/house-prices')
+mlflow.set_experiment(experiment_name='/Shared/lj_loan_prediction')
 git_sha = "ffa63b430205ff7"
 
 # Start an MLflow run to track the training process
@@ -99,8 +102,27 @@ with mlflow.start_run(
 # COMMAND ----------
 model_version = mlflow.register_model(
     model_uri=f'runs:/{run_id}/lightgbm-pipeline-model',
-    name=f"{catalog_name}.{schema_name}.house_prices_model_basic",
+    name=f"{catalog_name}.{schema_name}.loan_prediction_basic",
     tags={"git_sha": f"{git_sha}"})
+
+# COMMAND ----------
+
+# from the endpoint suggested test 
+
+from mlflow.models import validate_serving_input
+
+model_uri = 'runs:/933b545bd39e48e78738ad4ba649d7c1/lightgbm-pipeline-model'
+
+# The logged model does not contain an input_example.
+# Manually generate a serving payload to verify your model prior to deployment.
+from mlflow.models import convert_input_example_to_serving_input
+
+# Define INPUT_EXAMPLE via assignment with your own input example to the model
+# A valid input example is a data instance suitable for pyfunc prediction
+serving_payload = convert_input_example_to_serving_input(X_test)
+
+# Validate the serving payload works on the model
+validate_serving_input(model_uri, serving_payload)
 
 # COMMAND ----------
 run = mlflow.get_run(run_id)
