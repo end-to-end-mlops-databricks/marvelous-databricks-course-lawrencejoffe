@@ -110,7 +110,7 @@ with mlflow.start_run(tags={"branch": "week2",
     mlflow.pyfunc.log_model(
         python_model=wrapped_model,
         artifact_path="pyfunc-model",
-        # code_paths = ["../mlops_with_databricks-0.0.1-py3-none-any.whl"],
+        code_paths = ["/Volumes/heiaepgah71pwedmld01001/lj_loan_prediction/packages/mlops_with_databricks-0.0.1-py3-none-any.whl"],
         signature=signature
     )
 
