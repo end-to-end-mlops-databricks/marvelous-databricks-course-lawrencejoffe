@@ -39,4 +39,18 @@ uv build
 
 databricks auth login --host https://adb-1713302240061567.7.azuredatabricks.net
 
-databricks fs cp dist/mlops_with_databricks-0.0.1-py3-none-any.whl  dbfs:/Volumes/heiaepgah71pwedmld01001/lj_test/mlops_data/ --profile primeai
+databricks fs cp dist/mlops_with_databricks-0.0.1-py3-none-any.whl  dbfs:/Volumes/heiaepgah71pwedmld01001/lj_loan_prediction/packages/ --profile primeai --overwrite
+
+
+## Run precommit
+
+Install precommit
+
+uv pip install pre-commit
+
+
+```
+uv run pre-commit run --all-files
+```
+
+Also modify .github/workflows/ci.yml

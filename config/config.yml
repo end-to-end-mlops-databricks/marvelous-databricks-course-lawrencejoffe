@@ -1,5 +1,5 @@
 catalog_name: heiaepgah71pwedmld01001
-schema_name: lj_test
+schema_name: lj_loan_prediction
 
 parameters:
   learning_rate: 0.01
@@ -7,7 +7,6 @@ parameters:
   max_depth: 6
 
 num_features:
-  - id
   - person_age
   - person_income
   - person_emp_length
