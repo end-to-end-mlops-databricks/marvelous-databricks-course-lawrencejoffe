@@ -1,14 +1,19 @@
 # Databricks notebook source
-# MAGIC %pip install ../housing_price-0.0.1-py3-none-any.whl
+# MAGIC %pip install ../mlops_with_databricks-0.0.1.tar.gz
 
 # COMMAND ----------
+
+# MAGIC %pip install --upgrade databricks-sdk
+
+# COMMAND ----------
+
 # MAGIC %restart_python
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Create Online Table for house features
-# MAGIC We already created house_features table as feature look up table.
+# MAGIC ## Create Online Table for loan features
+# MAGIC We already created loan_features table as feature look up table.
 
 # COMMAND ----------
 
@@ -23,7 +28,7 @@ from databricks.sdk.service.catalog import (
 from databricks.sdk.service.serving import EndpointCoreConfigInput, ServedEntityInput
 from pyspark.sql import SparkSession
 
-from house_price.config import ProjectConfig
+from loan_prediction.config import ProjectConfig
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -33,29 +38,36 @@ workspace = WorkspaceClient()
 # COMMAND ----------
 
 # Load config
-config = ProjectConfig.from_yaml(config_path="../../project_config.yml")
+config = ProjectConfig.from_yaml(config_path="../../config/config.yml")
 catalog_name = config.catalog_name
 schema_name = config.schema_name
 
 # COMMAND ----------
 
-online_table_name = f"{catalog_name}.{schema_name}.house_features_online"
+online_table_name = f"{catalog_name}.{schema_name}.loan_features_online"
 spec = OnlineTableSpec(
     primary_key_columns=["Id"],
-    source_table_full_name=f"{catalog_name}.{schema_name}.house_features",
+    source_table_full_name=f"{catalog_name}.{schema_name}.loan_features",
     run_triggered=OnlineTableSpecTriggeredSchedulingPolicy.from_dict({"triggered": "true"}),
     perform_full_copy=False,
 )
 
-online_table_pipeline = workspace.online_tables.create(name=online_table_name, spec=spec)
+from databricks.sdk.service.catalog import *
+
+online_table = OnlineTable(
+  name=online_table_name,
+  spec=spec
+)
+
+online_table_pipeline = workspace.online_tables.create_and_wait(table=online_table)
 
 # COMMAND ----------
 
 
-config = ProjectConfig.from_yaml(config_path="/Volumes/mlops_dev/house_prices/data/project_config.yml")
+# config = ProjectConfig.from_yaml(config_path="/Volumes/mlops_dev/house_prices/data/project_config.yml")
 
-catalog_name = config.catalog_name
-schema_name = config.schema_name
+# catalog_name = config.catalog_name
+# schema_name = config.schema_name
 
 # COMMAND ----------
 
@@ -65,11 +77,11 @@ schema_name = config.schema_name
 # COMMAND ----------
 
 workspace.serving_endpoints.create(
-    name="house-prices-model-serving-fe",
+    name="lj-loan-prediction-model-serving-fe",
     config=EndpointCoreConfigInput(
         served_entities=[
             ServedEntityInput(
-                entity_name=f"{catalog_name}.{schema_name}.house_prices_model_fe",
+                entity_name=f"{catalog_name}.{schema_name}.lj_loan_prediction_model_fe",
                 scale_to_zero_enabled=True,
                 workload_size="Small",
                 entity_version=1,
@@ -90,35 +102,22 @@ host = spark.conf.get("spark.databricks.workspaceUrl")
 
 # COMMAND ----------
 
-# Excluding "OverallQual", "GrLivArea", "GarageCars" because they will be taken from feature look up
-required_columns = [
-    "LotFrontage",
-    "LotArea",
-    "OverallCond",
-    "YearBuilt",
-    "YearRemodAdd",
-    "MasVnrArea",
-    "TotalBsmtSF",
-    "MSZoning",
-    "Street",
-    "Alley",
-    "LotShape",
-    "LandContour",
-    "Neighborhood",
-    "Condition1",
-    "BldgType",
-    "HouseStyle",
-    "RoofStyle",
-    "Exterior1st",
-    "Exterior2nd",
-    "MasVnrType",
-    "Foundation",
-    "Heating",
-    "CentralAir",
-    "SaleType",
-    "SaleCondition",
-    "Id",
-]
+num_features = config.num_features
+cat_features = config.cat_features
+required_columns = cat_features + num_features
+required_columns
+
+# COMMAND ----------
+
+fe_columns = ["person_income"]
+for f in fe_columns:
+    required_columns.remove(f)
+
+required_columns  
+
+# COMMAND ----------
+
+
 
 train_set = spark.table(f"{catalog_name}.{schema_name}.train_set").toPandas()
 
@@ -134,9 +133,10 @@ train_set.dtypes
 dataframe_records[0]
 
 # COMMAND ----------
+
 start_time = time.time()
 
-model_serving_endpoint = f"https://{host}/serving-endpoints/house-prices-model-serving-fe/invocations"
+model_serving_endpoint = f"https://{host}/serving-endpoints/lj-loan-prediction-model-serving-fe/invocations"
 
 response = requests.post(
     f"{model_serving_endpoint}",
@@ -153,8 +153,8 @@ print("Execution time:", execution_time, "seconds")
 
 # COMMAND ----------
 
-house_features = spark.table(f"{catalog_name}.{schema_name}.house_features").toPandas()
+loan_features = spark.table(f"{catalog_name}.{schema_name}.loan_features").toPandas()
 
 # COMMAND ----------
 
-house_features.dtypes
+loan_features.dtypes
