@@ -1,7 +1,12 @@
 # Databricks notebook source
-# MAGIC %pip install ../housing_price-0.0.1-py3-none-any.whl
+# MAGIC %pip install ../mlops_with_databricks-0.0.1.tar.gz
 
 # COMMAND ----------
+
+# MAGIC %pip install --upgrade databricks-sdk
+
+# COMMAND ----------
+
 # MAGIC %restart_python
 
 # COMMAND ----------
@@ -20,25 +25,29 @@ from databricks.sdk.service.serving import (
     Route,
 )
 
-from house_price.config import ProjectConfig
+from loan_prediction.config import ProjectConfig
 from pyspark.sql import SparkSession
 
 workspace = WorkspaceClient()
 spark = SparkSession.builder.getOrCreate()
 
-config = ProjectConfig.from_yaml(config_path="../../project_config.yml")
+config = ProjectConfig.from_yaml(config_path="../../config/config.yml")
 
 catalog_name = config.catalog_name
 schema_name = config.schema_name
 
 train_set = spark.table(f"{catalog_name}.{schema_name}.train_set").toPandas()
 
+
+
+# COMMAND ----------
+
 workspace.serving_endpoints.create(
-    name="house-prices-model-serving",
+    name="lj-loan_prediction-model-serving",
     config=EndpointCoreConfigInput(
         served_entities=[
             ServedEntityInput(
-                entity_name=f"{catalog_name}.{schema_name}.house_prices_model",
+                entity_name=f"{catalog_name}.{schema_name}.loan_prediction_model_pyfunc",
                 scale_to_zero_enabled=True,
                 workload_size="Small",
                 entity_version=2,
@@ -47,7 +56,7 @@ workspace.serving_endpoints.create(
     # Optional if only 1 entity is served
     traffic_config=TrafficConfig(
         routes=[
-            Route(served_model_name="house_prices_model-2",
+            Route(served_model_name="loan_prediction_model_pyfunc-2",
                   traffic_percentage=100)
         ]
         ),
@@ -71,65 +80,31 @@ host = spark.conf.get("spark.databricks.workspaceUrl")
 
 # COMMAND ----------
 
-required_columns = [
-    "LotFrontage",
-    "LotArea",
-    "OverallQual",
-    "OverallCond",
-    "YearBuilt",
-    "YearRemodAdd",
-    "MasVnrArea",
-    "TotalBsmtSF",
-    "GrLivArea",
-    "GarageCars",
-    "MSZoning",
-    "Street",
-    "Alley",
-    "LotShape",
-    "LandContour",
-    "Neighborhood",
-    "Condition1",
-    "BldgType",
-    "HouseStyle",
-    "RoofStyle",
-    "Exterior1st",
-    "Exterior2nd",
-    "MasVnrType",
-    "Foundation",
-    "Heating",
-    "CentralAir",
-    "SaleType",
-    "SaleCondition",
-]
+num_features = config.num_features
+cat_features = config.cat_features
+required_columns = cat_features + num_features
+required_columns
+
+# COMMAND ----------
+
 
 sampled_records = train_set[required_columns].sample(n=1000, replace=True).to_dict(orient="records")
 dataframe_records = [[record] for record in sampled_records]
+dataframe_records[0]
 
 # COMMAND ----------
 
 """
 Each body should be list of json with columns
 
-[{'LotFrontage': 78.0,
-  'LotArea': 9317,
-  'OverallQual': 6,
-  'OverallCond': 5,
-  'YearBuilt': 2006,
-  'Exterior1st': 'VinylSd',
-  'Exterior2nd': 'VinylSd',
-  'MasVnrType': 'None',
-  'Foundation': 'PConc',
-  'Heating': 'GasA',
-  'CentralAir': 'Y',
-  'SaleType': 'WD',
-  'SaleCondition': 'Normal'}]
 """
 
 # COMMAND ----------
+
 start_time = time.time()
 
 model_serving_endpoint = (
-    f"https://{host}/serving-endpoints/house-prices-model-serving/invocations"
+    f"https://{host}/serving-endpoints/lj-loan_prediction-model-serving/invocations"
 )
 response = requests.post(
     f"{model_serving_endpoint}",
@@ -153,7 +128,7 @@ print("Execution time:", execution_time, "seconds")
 
 # Initialize variables
 model_serving_endpoint = (
-    f"https://{host}/serving-endpoints/house-prices-model-serving/invocations"
+    f"https://{host}/serving-endpoints/lj-loan_prediction-model-serving/invocations"
 )
 
 headers = {"Authorization": f"Bearer {token}"}
@@ -193,4 +168,3 @@ average_latency = sum(latencies) / len(latencies)
 
 print("\nTotal execution time:", total_execution_time, "seconds")
 print("Average latency per request:", average_latency, "seconds")
-
