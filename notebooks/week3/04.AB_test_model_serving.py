@@ -1,17 +1,23 @@
 # Databricks notebook source
-# MAGIC %pip install ../housing_price-0.0.1-py3-none-any.whl
+# MAGIC %pip install ../mlops_with_databricks-0.0.1.tar.gz
 
 # COMMAND ----------
+
+# MAGIC %pip install --upgrade databricks-sdk
+
+# COMMAND ----------
+
 # MAGIC %restart_python
 
 # COMMAND ----------
+
 import time
 
 import mlflow
 import pandas as pd
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.serving import EndpointCoreConfigInput, ServedEntityInput
-from lightgbm import LGBMRegressor
+from lightgbm import LGBMRegressor, LGBMClassifier
 from mlflow import MlflowClient
 from mlflow.models import infer_signature
 from pyspark.sql import SparkSession
@@ -22,7 +28,7 @@ from sklearn.preprocessing import OneHotEncoder
 import hashlib
 import requests
 
-from house_price.config import ProjectConfig
+from loan_prediction.config import ProjectConfig
 
 # Set up MLflow for tracking and model registry
 mlflow.set_tracking_uri("databricks")
@@ -32,7 +38,7 @@ mlflow.set_registry_uri("databricks-uc")
 client = MlflowClient()
 
 # Load configuration
-config = ProjectConfig.from_yaml(config_path="../../project_config.yml")
+config = ProjectConfig.from_yaml(config_path="../../config/config.yml")
 
 # Extract key configuration details
 num_features = config.num_features
@@ -91,11 +97,11 @@ preprocessor = ColumnTransformer(
 )
 
 # Build a pipeline combining preprocessing and model training steps
-pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("regressor", LGBMRegressor(**parameters_a))])
+pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("regressor", LGBMClassifier(**parameters_a))])
 
 # Set the MLflow experiment to track this A/B testing project
-mlflow.set_experiment(experiment_name="/Shared/house-prices-ab")
-model_name = f"{catalog_name}.{schema_name}.house_prices_model_ab"
+mlflow.set_experiment(experiment_name="/Shared/lj-loan-prediction-ab")
+model_name = f"{catalog_name}.{schema_name}.loan_predition_model_ab"
 
 # Git commit hash for tracking model version
 git_sha = "ffa63b430205ff7"
@@ -156,7 +162,7 @@ model_A = mlflow.sklearn.load_model(model_uri)
 # COMMAND ----------
 
 # Repeat the training and logging steps for Model B using parameters for B
-pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("regressor", LGBMRegressor(**parameters_b))])
+pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("regressor", LGBMClassifier(**parameters_b))])
 
 # Start MLflow run for Model B
 with mlflow.start_run(tags={"model_class": "B", "git_sha": git_sha}) as run:
@@ -207,7 +213,7 @@ model_B = mlflow.sklearn.load_model(model_uri)
 # COMMAND ----------
 
 
-class HousePriceModelWrapper(mlflow.pyfunc.PythonModel):
+class LoanPredictionModelWrapper(mlflow.pyfunc.PythonModel):
     def __init__(self, models):
         self.models = models
         self.model_a = models[0]
@@ -215,27 +221,29 @@ class HousePriceModelWrapper(mlflow.pyfunc.PythonModel):
 
     def predict(self, context, model_input):
         if isinstance(model_input, pd.DataFrame):
-            house_id = str(model_input["Id"].values[0])
-            hashed_id = hashlib.md5(house_id.encode(encoding="UTF-8")).hexdigest()
+            loan_id = str(model_input["id"].values[0])
+            hashed_id = hashlib.md5(loan_id.encode(encoding="UTF-8")).hexdigest()
             # convert a hexadecimal (base-16) string into an integer
             if int(hashed_id, 16) % 2:
-                predictions = self.model_a.predict(model_input.drop(["Id"], axis=1))
+                predictions = self.model_a.predict(model_input.drop(["id"], axis=1))
                 return {"Prediction": predictions[0], "model": "Model A"}
             else:
-                predictions = self.model_b.predict(model_input.drop(["Id"], axis=1))
+                predictions = self.model_b.predict(model_input.drop(["id"], axis=1))
                 return {"Prediction": predictions[0], "model": "Model B"}
         else:
             raise ValueError("Input must be a pandas DataFrame.")
 
 
 # COMMAND ----------
-X_train = train_set[num_features + cat_features + ["Id"]]
-X_test = test_set[num_features + cat_features + ["Id"]]
+
+X_train = train_set[num_features + cat_features + ["id"]]
+X_test = test_set[num_features + cat_features + ["id"]]
 
 
 # COMMAND ----------
+
 models = [model_A, model_B]
-wrapped_model = HousePriceModelWrapper(models)  # we pass the loaded models to the wrapper
+wrapped_model = LoanPredictionModelWrapper(models)  # we pass the loaded models to the wrapper
 example_input = X_test.iloc[0:1]  # Select the first row for prediction as example
 example_prediction = wrapped_model.predict(
     context=None,
@@ -243,8 +251,9 @@ example_prediction = wrapped_model.predict(
 print("Example Prediction:", example_prediction)
 
 # COMMAND ----------
-mlflow.set_experiment(experiment_name="/Shared/house-prices-ab-testing")
-model_name = f"{catalog_name}.{schema_name}.house_prices_model_pyfunc_ab_test"
+
+mlflow.set_experiment(experiment_name="/Shared/lj-loan-prediction-ab-testing")
+model_name = f"{catalog_name}.{schema_name}.loan_prediction_model_pyfunc_ab_test"
 
 with mlflow.start_run() as run:
     run_id = run.info.run_id
@@ -257,16 +266,17 @@ with mlflow.start_run() as run:
     mlflow.log_input(dataset, context="training")
     mlflow.pyfunc.log_model(
         python_model=wrapped_model,
-        artifact_path="pyfunc-house-price-model-ab",
+        artifact_path="pyfunc-loan-prediction-model-ab",
         signature=signature
     )
 model_version = mlflow.register_model(
-    model_uri=f"runs:/{run_id}/pyfunc-house-price-model-ab",
+    model_uri=f"runs:/{run_id}/pyfunc-loan-prediction-model-ab",
     name=model_name,
     tags={"git_sha": f"{git_sha}"}
 )
 
 # COMMAND ----------
+
 model = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/{model_version.version}")
 
 # Run prediction
@@ -285,14 +295,14 @@ predictions
 workspace = WorkspaceClient()
 
 workspace.serving_endpoints.create(
-    name="house-prices-model-serving-ab-test",
+    name="lj-loan-prediction-model-serving-ab-test",
     config=EndpointCoreConfigInput(
         served_entities=[
             ServedEntityInput(
-                entity_name=f"{catalog_name}.{schema_name}.house_prices_model_pyfunc_ab_test",
+                entity_name=f"{catalog_name}.{schema_name}.loan_prediction_model_pyfunc_ab_test",
                 scale_to_zero_enabled=True,
                 workload_size="Small",
-                entity_version=model_version,
+                entity_version=model_version.version,
             )
         ]
     ),
@@ -310,37 +320,14 @@ host = spark.conf.get("spark.databricks.workspaceUrl")
 
 # COMMAND ----------
 
-required_columns = [
-    "LotFrontage",
-    "LotArea",
-    "OverallQual",
-    "OverallCond",
-    "YearBuilt",
-    "YearRemodAdd",
-    "MasVnrArea",
-    "TotalBsmtSF",
-    "GrLivArea",
-    "GarageCars",
-    "MSZoning",
-    "Street",
-    "Alley",
-    "LotShape",
-    "LandContour",
-    "Neighborhood",
-    "Condition1",
-    "BldgType",
-    "HouseStyle",
-    "RoofStyle",
-    "Exterior1st",
-    "Exterior2nd",
-    "MasVnrType",
-    "Foundation",
-    "Heating",
-    "CentralAir",
-    "SaleType",
-    "SaleCondition",
-    "Id",
-]
+num_features = config.num_features
+cat_features = config.cat_features
+required_columns = cat_features + num_features
+required_columns
+
+# COMMAND ----------
+
+
 
 train_set = spark.table(f"{catalog_name}.{schema_name}.train_set").toPandas()
 sampled_records = train_set[required_columns].sample(n=1000, replace=True).to_dict(orient="records")
@@ -351,7 +338,7 @@ dataframe_records = [[record] for record in sampled_records]
 start_time = time.time()
 
 model_serving_endpoint = (
-    f"https://{host}/serving-endpoints/house-prices-model-serving-ab-test/invocations"
+    f"https://{host}/serving-endpoints/lj-loan-prediction-model-serving-ab-test/invocations"
 )
 
 response = requests.post(
