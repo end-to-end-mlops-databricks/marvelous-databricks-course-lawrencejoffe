@@ -54,3 +54,11 @@ uv run pre-commit run --all-files
 ```
 
 Also modify .github/workflows/ci.yml
+
+
+## Week 5 - ADB deploy
+
+```
+databricks bundle validate --profile primeai
+databricks bundle deploy --profile primeai
+```

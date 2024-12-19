@@ -98,3 +98,4 @@ dmypy.json
 
 .databricks
 *.whl
+notebooks/mlops_with_databricks-0.0.1.tar.gz
