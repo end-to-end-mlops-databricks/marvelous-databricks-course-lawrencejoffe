@@ -4,6 +4,29 @@
 
 bundle:
   name: marvelous-databricks-course-lawrencejoffe
+  cluster_id: 1211-123725-aeroeqe8
+
+include:
+  - resources/*.yml
+
+artifacts:
+  default:
+    type: whl
+    build: uv build
+    path: .
+
+
+variables:
+  root_path:
+    description: root_path for the target
+    default: /Shared/.bundle/${bundle.target}/${bundle.name}
+  git_sha:
+    description: git_sha
+    default: abcd
+  schedule_pause_status:
+    description: schedule pause status
+    default: UNPAUSED
+
 
 targets:
   dev:
@@ -11,9 +34,9 @@ targets:
     default: true
     workspace:
       host: https://adb-1713302240061567.7.azuredatabricks.net
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
 
-  ## Optionally, there could be 'staging' or 'prod' targets here.
-  #
-  # prod:
-  #   workspace:
-  #     host: https://adb-1713302240061567.7.azuredatabricks.net
+  prod:
+    workspace:
+      host: https://adb-1713302240061567.7.azuredatabricks.net
+      root_path: ${var.root_path}
